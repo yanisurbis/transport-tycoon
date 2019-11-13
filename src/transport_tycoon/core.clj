@@ -1,5 +1,6 @@
 (ns transport-tycoon.core
-  (:require [clojure.pprint :refer :all])
+  (:require [clojure.pprint :refer :all]
+            [transport-tycoon.helpers :refer [prn! pprint-system!]])
   (:gen-class))
 
 (def car-1 {:id :car-1
@@ -41,7 +42,7 @@
                              :duration 5}
                     :start-time 10})
 
-(def queue-to-deliver [:a :b :b])
+(def queue-to-deliver [:a :a :b :a :b :b :a :b])
 
 (def system {:initial-queue queue-to-deliver
              :current-time 0
@@ -85,17 +86,9 @@
 (defn get-random-id []
   (rand-int 10000000))
 
-(defn prn! [data text]
-  (println)
-  (pprint (str "START~" text))
-  (pprint data)
-  (println (str "END~" text))
-  (println))
-
 (defn get-next-car-action-type [system car]
   (let [payload (get-element-from-queue system :factory)
         actor-position (:position car)]
-        ;(prn! [(:queues system) payload actor-position] "action-type")
        (case [payload actor-position]
           [:a :factory] :factory->port
           [:b :factory] :factory->b
@@ -123,7 +116,7 @@
 
 (defn get-next-action [system actor]
   (get-in actor [:actions
-                (get-next-action-type system actor)]))
+                 (get-next-action-type system actor)]))
 
 (defn get-payload-and-new-system [system actor]
  (case [(:type actor) (:position actor)]
@@ -132,7 +125,7 @@
     [:ship :port] {:payload (get-element-from-queue system :port)
                    :system (remove-element-from-queue system :port)}
                   {:payload nil
-                  :system system}))
+                   :system system}))
 
 (defn add-event-for-actor [system actor]
   (let [action (get-next-action system actor)
@@ -142,7 +135,7 @@
                :action action
                :start-time (:current-time system)
                :payload payload
-               :end-time nil }]
+               :end-time nil}]
     (update system :events conj event)))
 
 (defn add-payload-to-queue [system queue-name payload]
@@ -163,8 +156,6 @@
     actor))
 
 (defn update-actor [actor event]
-  ;{:pre [(do (prn [actor event] "update-actor-start") true)]
-  ; :post [(do (prn % "update-actor-end") true)]}
   (if (= (:id actor) (get-in event [:actor :id]))
     (update-position actor (get-in event [:action :to]))
     actor))
@@ -186,7 +177,6 @@
         is-not-busy-actor? #(not (some #{(:id %)} busy-actors-ids))
         actors (filter is-not-busy-actor? (:actors system))]
        (reduce (fn [system actor]
-            ;(prn actor "actor")
                  (add-event-for-actor system actor))
             system
             actors)))
@@ -205,40 +195,6 @@
     generate-new-events
     remove-completed-events
     update-time))
-
-;(remove-completed-events system)
-;
-;(->> system
-;  process-completed-events
-;  generate-new-events
-;  ;remove-completed-events
-;  update-time
-;  process-completed-events
-;  ;generate-new-events
-;  ;remove-completed-events
-;  update-time)
-
-(defn print-event [event]
-  (pprint [(:actor-id event) (:start-time event) (get-in event [:action :type]) (:payload event)])
-  ;(pprint event)
-  ;(println "-----------------------------------")
-  (println)
-  event)
-
-(defn pprint-system! [system]
-  (->>
-    (into (:events system) (:history system))
-    (remove #(= :wait (get-in % [:action :type])))
-    (map #(assoc % :actor-id (get-in % [:actor :id])))
-    (map #(assoc % :action-type (get-in % [:action :type])))
-    (map #(dissoc % :actor))
-    (sort-by :start-time)
-    (sort-by :actor-id)
-    (map #(select-keys % [:actor-id :start-time :end-time :action-type :payload]))
-    (reduce conj [])
-    print-table)
-  (println (:current-time system))
-  (println "-----------------------------"))
 
 (->> system
   (iterate tick)

@@ -1,44 +1,35 @@
-# transport-tycoon
+# Transport Tycoon
 
-FIXME: description
+Solution to [transport tycoon](https://github.com/Softwarepark/exercises/blob/master/transport-tycoon.md) kata.
 
-## Installation
-
-Download from http://example.com/FIXME.
-
-## Usage
-
-FIXME: explanation
-
-    $ java -jar transport-tycoon-0.1.0-standalone.jar [args]
-
-## Options
-
-FIXME: listing of options this app accepts.
-
-## Examples
-
-...
-
-### Bugs
-
-...
-
-### Any Other Sections
-### That You Think
-### Might be Useful
-
-## License
-
-Copyright © 2019 FIXME
-
-This program and the accompanying materials are made available under the
-terms of the Eclipse Public License 2.0 which is available at
-http://www.eclipse.org/legal/epl-2.0.
-
-This Source Code may also be made available under the following Secondary
-Licenses when the conditions for such availability set forth in the Eclipse
-Public License, v. 2.0 are satisfied: GNU General Public License as published by
-the Free Software Foundation, either version 2 of the License, or (at your
-option) any later version, with the GNU Classpath Exception which is available
-at https://www.gnu.org/software/classpath/license.html.
+## Solution 1
+```$xslt
+| :actor-id | :start-time | :end-time |   :action-type | :payload |
+|-----------+-------------+-----------+----------------+----------|
+|    :car-1 |           0 |         1 | :factory->port |       :a |
+|    :car-1 |           1 |         2 | :port->factory |          |
+|    :car-1 |           2 |         7 |    :factory->b |       :b |
+|    :car-1 |           7 |        12 |    :b->factory |          |
+|    :car-1 |          12 |        17 |    :factory->b |       :b |
+|    :car-1 |          17 |        22 |    :b->factory |          |
+|    :car-2 |           0 |         1 | :factory->port |       :a |
+|    :car-2 |           1 |         2 | :port->factory |          |
+|    :car-2 |           2 |         3 | :factory->port |       :a |
+|    :car-2 |           3 |         4 | :port->factory |          |
+|    :car-2 |           4 |         9 |    :factory->b |       :b |
+|    :car-2 |           9 |        14 |    :b->factory |          |
+|    :car-2 |          14 |        15 | :factory->port |       :a |
+|    :car-2 |          15 |        16 | :port->factory |          |
+|    :car-2 |          16 |        21 |    :factory->b |       :b |
+|    :car-2 |          21 |        26 |    :b->factory |          |
+|   :ship-1 |           1 |         5 |       :port->a |       :a |
+|   :ship-1 |           5 |         9 |       :a->port |          |
+|   :ship-1 |           9 |        13 |       :port->a |       :a |
+|   :ship-1 |          13 |        17 |       :a->port |          |
+|   :ship-1 |          17 |        21 |       :port->a |       :a |
+|   :ship-1 |          21 |        25 |       :a->port |          |
+|   :ship-1 |          25 |        29 |       :port->a |       :a |
+|   :ship-1 |          29 |           |       :a->port |          |
+29
+-----------------------------
+```

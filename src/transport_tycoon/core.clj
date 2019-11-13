@@ -60,17 +60,11 @@
 
 (defn is-completed-event? [event current-time]
   (= current-time
-    (+ (:start-time event) (:duration event))))
-
-(defn remove-completed-events [system]
-  (update system :running remove #(is-completed-event? % (:current-time system))))
+    (+ (:start-time event) (get-in event [:action :duration]))))
 
 (defn get-completed-events [system]
   (filter #(is-completed-event? % (:current-time system))
     (:running system)))
-
-(defn update-history [system]
-  (update system :history merge (get-completed-events system)))
 
 (defn tick [system]
   (-> system
@@ -88,8 +82,6 @@
   (filter #(= (get-in [:actor :id] %)
              (:id actor))
     (:events system)))
-
-
 
 (defn get-element-from-queue [system queue-name]
   (-> (get-in system [:queues queue-name])
@@ -140,7 +132,7 @@
    :payload (get-payload system actor)})
 
 (comment "
-  - get completed events
+  *- get completed events
   - update queues
   - update actors' position based on these events
   *- create new events for each actor

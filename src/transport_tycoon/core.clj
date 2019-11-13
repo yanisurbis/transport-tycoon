@@ -1,4 +1,5 @@
 (ns transport-tycoon.core
+  (:require [clojure.pprint :refer :all])
   (:gen-class))
 
 (def car-1 {:id :car-1
@@ -40,31 +41,50 @@
                              :duration 5}
                     :start-time 10})
 
-(defn is-completed-event? [event current-time]
-  (= current-time
+(defn is-completed-event? [event system]
+  {:pre [(do (println "start ~")
+          (pprint (:start-time event))
+          (pprint (get-in event [:action :duration]))
+          true)]
+   :post [(do (println "end ~") true)]}
+  (>= (:current-time system)
     (+ (:start-time event) (get-in event [:action :duration]))))
 
 (defn get-completed-events [system]
-  (filter #(is-completed-event? % (:current-time system))
-    (:running system)))
+  (println "events")
+  (pprint (:events system))
+  (spit "./test.edn" (:events system) )
+  (filter #(is-completed-event? % system)
+    (:events system)))
 
-(defn delivery-in-process? [queue-to-deliver]
-  (fn [system]
+(get-completed-events {:events [{:start-time 0 :action {:duration 5}}
+                                {:start-time 0 :action {:duration 1}}]
+                       :current-time 2})
+
+(defn delivery-in-process? [system]
     (not=
-      (count queue-to-deliver)
+      (count (:initial-queue system))
       (+ (count (get-in system [:queues :a]))
-        (count (get-in system [:queues :b]))))))
+        (count (get-in system [:queues :b])))))
+
+(delivery-in-process? {:initial-queue [2 1]
+                       :queues {:a [1 2]}})
 
 (defn get-element-from-queue [system queue-name]
   (-> (get-in system [:queues queue-name])
       first))
 
-(defn get-random-id (rand-int 100000000000000))
+(get-element-from-queue {:queues {:a [1 2 3]}} :a)
+
+(defn get-random-id []
+  (rand-int 10000000))
+
+(get-random-id)
 
 (defn get-next-car-action-type [system car]
   (let [payload (get-element-from-queue system :factory)
-        actor-position (:position car)
-        (case [payload actor-position]
+        actor-position (:position car)]
+       (case [payload actor-position]
           [:a :factory] :factory->port
           [:b :factory] :factory->b
           [:a :port] :port->factory
@@ -73,21 +93,26 @@
           [:a :b] :b->factory
           [:b :b] :b->factory
           [nil :b] :b->factory
-          :wait)]))
+          :wait)))
+
+(get-next-car-action-type {:queues {:factory [:a :b]}} {:position :factory})
 
 (defn get-next-ship-action-type [system ship]
   (let [payload (get-element-from-queue system :port)
-        actor-position (:position ship)
-        (case [payload actor-position]
+        actor-position (:position ship)]
+       (case [payload actor-position]
           [:a :a] :a->port
           [nil :a] :a->port
           [:a :port] :port->a
-          :wait)]))
+          :wait)))
 
 (defn get-next-action-type [system actor]
+  (print actor)
   (case (:type actor)
     :car (get-next-car-action-type system actor)
     :ship (get-next-ship-action-type system actor)))
+
+(get-next-car-action-type {:queues {:factory [:a :b]}} {:position :factory :type :car})
 
 (defn get-payload [system actor]
  (case [(:type actor) (:position actor)]
@@ -128,28 +153,34 @@
   (assoc system :actors (map #(update-actor % event) (:actors system))))
 
 (defn process-completed-events [system]
+  (pprint "Here")
+  (pprint (get-completed-events system))
+  (pprint "One")
+  (pprint (reduce
+            (fn [x y] x)
+            system
+            (get-completed-events system)))
   (reduce
-    (fn [system event]
-      (-> system
-        (update-actors event)
-        (update-queues event)))
+    identity
     system
     (get-completed-events system)))
 
 (defn generate-new-events [system]
   (update system :events
-    merge (map #(get-next-event system %) (:actors system))))
+    into (map #(get-next-event system %) (:actors system))))
 
 (defn remove-completed-events [system]
   (merge system
-    {:events (remove is-completed-event? (:events system))
-     :history (merge (get-completed-events system) (:history system))}))
+    {:events (remove #(is-completed-event? % system)
+                     (:events system))}))
+     ;:history (merge (get-completed-events system) (:history system))}))
+
 
 (defn update-time [system]
   (update system :current-time inc))
 
 (defn tick [system]
-  (-> system
+  (->> system
     process-completed-events
     generate-new-events
     remove-completed-events
@@ -165,10 +196,22 @@
                       :b []}
              :events []
              :history []
-             :actors '(car-1 car-2 ship-1)})
+             :actors [car-1 car-2 ship-1]})
 
+;(remove-completed-events system)
+;
 (->> system
-  (iterate tick)
-  (drop-while (delivery-in-process? queue-to-deliver))
-  (take 1)
-  :current-time)
+  process-completed-events
+  generate-new-events
+  ;remove-completed-events
+  update-time
+  process-completed-events
+  ;generate-new-events
+  ;remove-completed-events
+  update-time)
+
+;(->> system
+;  (iterate tick)
+;  ;(drop-while (delivery-in-process? queue-to-deliver))
+;  (take 2))
+

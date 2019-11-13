@@ -1,7 +1,9 @@
 (ns transport-tycoon.core-test
   (:require [clojure.test :refer :all]
-            [transport-tycoon.core :refer :all]))
+            [transport-tycoon.core :as core]))
 
-(deftest a-test
-  (testing "FIXME, I fail."
-    (is (= 0 1))))
+(deftest basics
+  (testing "is-completed-event"
+    (is (= (core/is-completed-event? {:start-time 0 :action {:duration 1}}
+                                     {:current-time 1})
+           true))))

@@ -63,6 +63,12 @@
     (filter #(is-completed-event? % system))
     (map #(assoc % :end-time (:current-time system)))))
 
+(defn get-busy-actors [system]
+  (->>
+    (:events system)
+    (filter #(not (is-completed-event? % system)))
+    (map :actor)))
+
 (defn delivery-in-process? [system]
     (not=
       (count (:initial-queue system))
@@ -176,11 +182,14 @@
     (get-completed-events system)))
 
 (defn generate-new-events [system]
-  (reduce (fn [system actor]
+  (let [busy-actors-ids (map :id (get-busy-actors system))
+        is-not-busy-actor? #(not (some #{(:id %)} busy-actors-ids))
+        actors (filter is-not-busy-actor? (:actors system))]
+       (reduce (fn [system actor]
             ;(prn actor "actor")
-            (add-event-for-actor system actor))
-           system
-           (:actors system)))
+                 (add-event-for-actor system actor))
+            system
+            actors)))
 
 (defn remove-completed-events [system]
   (merge system

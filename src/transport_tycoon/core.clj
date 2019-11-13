@@ -141,6 +141,18 @@
   *- inc time
 ")
 
+(defn add-payload-to-queue [system queue-name payload]
+ (update-in system [:queues queue-name] conj payload))
+
+(defn process-event [system event]
+  (let [payload (:payload event)
+        action-type (get-in event [:action :type])]
+       (case action-type
+        :factory->port (add-payload-to-queue system :port payload)
+        :factory->b (add-payload-to-queue system :b payload)
+        :port->a (add-payload-to-queue system :a payload)
+        system)))
+
 (def queue-to-deliver [:a :b :a])
 
 (def system {:initial-queue queue-to-deliver

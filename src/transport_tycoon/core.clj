@@ -153,6 +153,10 @@
         :port->a (add-payload-to-queue system :a payload)
         system)))
 
+(defn process-events [system events]
+  (reduce process-event system events))
+  
+
 (def queue-to-deliver [:a :b :a])
 
 (def system {:initial-queue queue-to-deliver

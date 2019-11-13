@@ -38,16 +38,6 @@
                              :duration 5}
                     :start-time 10})
 
-(defn update-queues [system event])
-(defn update-actors-positions [system event])
-(defn generate-new-events)
-
-(defn get-next-action-car [prev-action car]
-  ())
-
-(defn get-port-queue [system]
-  (get-in system [:queues :port]))
-
 (defn add-to-queue [system queue]
   (update-in system [:queues queue] #(conj % :done)))
 
@@ -155,7 +145,6 @@
 
 (defn process-events [system events]
   (reduce process-event system events))
-  
 
 (def queue-to-deliver [:a :b :a])
 

@@ -1,19 +1,20 @@
 (ns transport-tycoon.core
-  (:require [transport-tycoon.system :as system])
-  (:require [transport-tycoon.time :as time])
   (:gen-class))
 
-; ACTORS
 (def car-1 {:id :car-1
             :type :car
             :actions {:factory->b {:type :factory->b
-                                   :duration 5}
+                                   :duration 5
+                                   :to :b}
                       :b->factory {:type :b->factory
-                                   :duration 5}
+                                   :duration 5
+                                   :to :factory}
                       :factory->port {:type :factory->port
-                                      :duration 1}
+                                      :duration 1
+                                      :to :port}
                       :port->factory {:type :port->factory
-                                      :duration 1}
+                                      :duration 1
+                                      :to :factory}
                       :wait {:type :wait
                              :duration 1}}
             :position :factory})
@@ -23,13 +24,14 @@
 (def ship-1 {:id :ship-1
              :type :ship
              :actions {:port->a {:type :port->a
-                                 :duration 4}
+                                 :duration 4
+                                 :to :a}
                        :a->port {:type :a->port
-                                 :duration 4}
+                                 :duration 4
+                                 :to :port}
                        :wait {:type :wait
                               :duration 1}}
              :position :port})
-; ----------------------------------------------
 
 (def event-example {:id 123
                     :actor car-1
@@ -37,16 +39,6 @@
                     :action {:type :factory->b
                              :duration 5}
                     :start-time 10})
-
-(defn add-to-queue [system queue]
-  (update-in system [:queues queue] #(conj % :done)))
-
-(defn handle-event [system event]
-  (case (:action event)
-    :factory->port (add-to-queue system :port)
-    :port->a (add-to-queue system :a)
-    :factory->b (add-to-queue system :b)
-    system))
 
 (defn is-completed-event? [event current-time]
   (= current-time
@@ -56,22 +48,12 @@
   (filter #(is-completed-event? % (:current-time system))
     (:running system)))
 
-(defn tick [system]
-  (-> system
-    (update-in [:queues :port] rest)
-    (update-in [:queues :a] #(conj % :x))))
-
 (defn delivery-in-process? [queue-to-deliver]
   (fn [system]
     (not=
       (count queue-to-deliver)
       (+ (count (get-in system [:queues :a]))
         (count (get-in system [:queues :b]))))))
-
-(defn get-last-actor-event [system actor]
-  (filter #(= (get-in [:actor :id] %)
-             (:id actor))
-    (:events system)))
 
 (defn get-element-from-queue [system queue-name]
   (-> (get-in system [:queues queue-name])
@@ -121,20 +103,10 @@
    :start-time (:current-time system)
    :payload (get-payload system actor)})
 
-(comment "
-  *- get completed events
-  - update queues
-  - update actors' position based on these events
-  *- create new events for each actor
-  - put these events in events
-  - update history?
-  *- inc time
-")
-
 (defn add-payload-to-queue [system queue-name payload]
  (update-in system [:queues queue-name] conj payload))
 
-(defn process-event [system event]
+(defn update-queues [system event]
   (let [payload (:payload event)
         action-type (get-in event [:action :type])]
        (case action-type
@@ -143,10 +115,47 @@
         :port->a (add-payload-to-queue system :a payload)
         system)))
 
-(defn process-events [system events]
-  (reduce process-event system events))
+(defn update-position [actor new-position]
+  (if new-position
+    (assoc actor :position new-position)
+    actor))
 
-(def queue-to-deliver [:a :b :a])
+(defn update-actor [actor event]
+  (if (= (:id actor) (get-in actor [:actor :id]))
+    (update-position actor (get-in event [:action :to]))))
+
+(defn update-actors [system event]
+  (assoc system :actors (map #(update-actor % event) (:actors system))))
+
+(defn process-completed-events [system]
+  (reduce
+    (fn [system event]
+      (-> system
+        (update-actors event)
+        (update-queues event)))
+    system
+    (get-completed-events system)))
+
+(defn generate-new-events [system]
+  (update system :events
+    merge (map #(get-next-event system %) (:actors system))))
+
+(defn remove-completed-events [system]
+  (merge system
+    {:events (remove is-completed-event? (:events system))
+     :history (merge (get-completed-events system) (:history system))}))
+
+(defn update-time [system]
+  (update system :current-time inc))
+
+(defn tick [system]
+  (-> system
+    process-completed-events
+    generate-new-events
+    remove-completed-events
+    update-time))
+
+(def queue-to-deliver [:a])
 
 (def system {:initial-queue queue-to-deliver
              :current-time 0
@@ -163,8 +172,3 @@
   (drop-while (delivery-in-process? queue-to-deliver))
   (take 1)
   :current-time)
-
-(defn -main
-  "I don't do a whole lot ... yet."
-  [& args]
-  (println "Hello, World!"))
